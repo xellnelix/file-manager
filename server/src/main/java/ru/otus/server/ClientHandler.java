@@ -9,8 +9,10 @@ import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketException;
 import java.util.Arrays;
+import java.util.List;
 
 public class ClientHandler implements Runnable {
+    private static final List<String> availableCommands = List.of("auth [login] [password]", "register [login] [password] [username]");
     private final Socket socket;
     private final Server server;
     private final DataInputStream in;
@@ -24,6 +26,7 @@ public class ClientHandler implements Runnable {
         try {
             authenticateUser(server);
             communicateWithUser();
+
         } catch (IOException e) {
             logger.error(e.getMessage());
             throw new RuntimeException(e);
@@ -38,13 +41,13 @@ public class ClientHandler implements Runnable {
     }
 
     private void authenticateUser(Server server) throws IOException {
-        while (username == null) {
+        while (username == null && !socket.isClosed()) {
             String message = in.readUTF();
             String[] args = message.replaceAll("\\s+", " ").split(" ");
             String command = args[0];
             switch (command) {
-                case "/auth": {
-                    if (!checkCorrectLength(args, 3)) {
+                case "auth": {
+                    if (args.length != 3) {
                         out.writeUTF("Некорректное число аргументов");
                         logger.info("Передано некорректное число аргументов: " + Arrays.toString(args));
                         continue;
@@ -63,8 +66,8 @@ public class ClientHandler implements Runnable {
                     }
                     break;
                 }
-                case "/register": {
-                    if (!checkCorrectLength(args, 4)) {
+                case "register": {
+                    if (args.length != 4) {
                         out.writeUTF("Некорректное число аргументов");
                         logger.info("Передано некорректное число аргументов: " + Arrays.toString(args));
                         continue;
@@ -83,6 +86,17 @@ public class ClientHandler implements Runnable {
                     }
                     break;
                 }
+                case "exit": {
+                    disconnect();
+                    break;
+                }
+                case "help": {
+                    sendMessage("Список доступных команд: ");
+                    for (String inputCommand: availableCommands) {
+                        sendMessage(inputCommand);
+                    }
+                    break;
+                }
                 default: {
                     sendMessage("Сперва необходимо авторизоваться или зарегистрироваться");
                     logger.info("Попытка вызова команд без авторизации/регистрации");
@@ -92,6 +106,9 @@ public class ClientHandler implements Runnable {
     }
 
     private void communicateWithUser() throws IOException {
+        if (socket.isClosed()) {
+            return;
+        }
         FileManager fm = new FileManager(username, this);
         while (socket.isConnected()) {
             try {
@@ -140,9 +157,5 @@ public class ClientHandler implements Runnable {
         } catch (IOException e) {
             logger.error(e.getMessage());
         }
-    }
-
-    private boolean checkCorrectLength(String[] args, int correctLength) {
-        return args.length == correctLength;
     }
 }

@@ -5,8 +5,12 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.*;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
+import java.util.List;
 
 public class FileManager {
+    private static final List<String> availableCommands = List.of("ls", "cd [directory]", "mkdir [name]", "rm [name]",
+            "mv [source] [destination]", "cp [source] [destination]", "help", "find [filename]", "where", "exit");
     private static final Logger logger = LogManager.getLogger(FileManager.class.getName());
     private static final String rootPath = System.getProperty("user.dir") + "\\rootDir";
     private File currentDir;
@@ -19,11 +23,11 @@ public class FileManager {
         this.username = username;
         userPath = rootPath + "\\" + username;
         currentPath = userPath;
-        createDirectory("");
         cl = clientHandler;
+        createDirectory("");
     }
 
-    private void createDirectory(String dirName) {
+    private synchronized void createDirectory(String dirName) {
         currentDir = new File(currentPath + "\\" + dirName);
         if (currentDir.exists()) {
             return;
@@ -34,14 +38,13 @@ public class FileManager {
         }
         cl.sendMessage("Директория создана");
         logger.info("Создана директория " + dirName + " для пользователя " + username);
-//        currentDir = new File(userPath);
     }
 
     private void showDirectoryContent(boolean isDetailized) {
         File[] files = currentDir.listFiles();
         if (files == null || files.length == 0) {
             cl.sendMessage("Директория " + currentDir.getName() + " пустая");
-            logger.info("Директория " + currentDir.getName() + "пустая");
+            logger.info("Директория " + currentDir.getName() + " пустая");
             return;
         }
         for (File f : files) {
@@ -55,7 +58,7 @@ public class FileManager {
         logger.info("Получены данные о содержимом директории " + currentDir.getName());
     }
 
-    private void changeDirectory(String path) {
+    private synchronized void changeDirectory(String path) {
         if (path.equals("..")) {
             if (currentDir.getPath().equals(userPath)) {
                 cl.sendMessage("Вы находитесь в корневой директории");
@@ -65,13 +68,15 @@ public class FileManager {
             currentPath = currentDir.getPath().substring(0, currentDir.getPath().indexOf(currentDirParts[currentDirParts.length - 1]) - 1);
         } else {
             currentPath += "\\" + path;
-            if (!currentDir.exists()) {
+            File checkDir = new File(currentPath);
+            if (!checkDir.exists()) {
                 currentPath = userPath;
                 cl.sendMessage("Поддиректории не существует");
                 return;
             }
         }
         currentDir = new File(currentPath);
+        cl.sendMessage("Переход в: " + currentDir.getName());
     }
 
     private void remove(String filename) {
@@ -109,7 +114,7 @@ public class FileManager {
     }
 
     private void copy(String source, String destination) {
-        File fileFrom = new File(userPath + "\\" + source);
+        File fileFrom = new File(currentPath + "\\" + source);
         File fileTo = new File(userPath + "\\" + destination + "\\" + fileFrom.getName());
         try (DataInputStream in = new DataInputStream(new FileInputStream(fileFrom));
              DataOutputStream out = new DataOutputStream(new FileOutputStream(fileTo))) {
@@ -143,8 +148,8 @@ public class FileManager {
         }
     }
 
-    public void showCurrentDirectory() {
-        cl.sendMessage(currentPath);
+    private synchronized void showCurrentDirectory() {
+        cl.sendMessage(currentDir.getPath());
     }
 
     public void start(String message) {
@@ -204,6 +209,12 @@ public class FileManager {
                     break;
                 }
                 showCurrentDirectory();
+                break;
+            case ("help"):
+                cl.sendMessage("Список доступных команд: ");
+                for (String command : availableCommands) {
+                    cl.sendMessage(command);
+                }
                 break;
             case ("exit"):
                 cl.disconnect();
