@@ -5,6 +5,7 @@ import org.apache.logging.log4j.Logger;
 
 import java.io.DataInputStream;
 import java.io.DataOutputStream;
+import java.io.File;
 import java.io.IOException;
 import java.net.Socket;
 import java.net.SocketException;
@@ -18,6 +19,7 @@ public class ClientHandler implements Runnable {
     private final DataInputStream in;
     private final DataOutputStream out;
     private String username;
+    private final File rootDir;
 
     private static final Logger logger = LogManager.getLogger(ClientHandler.class.getName());
 
@@ -38,6 +40,7 @@ public class ClientHandler implements Runnable {
         this.server = server;
         in = new DataInputStream(socket.getInputStream());
         out = new DataOutputStream(socket.getOutputStream());
+        rootDir = server.getRootDir();
     }
 
     private void authenticateUser(Server server) throws IOException {
@@ -157,5 +160,9 @@ public class ClientHandler implements Runnable {
         } catch (IOException e) {
             logger.error(e.getMessage());
         }
+    }
+
+    public File getRootDir() {
+        return rootDir;
     }
 }

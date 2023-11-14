@@ -12,7 +12,6 @@ public class FileManager {
     private static final List<String> availableCommands = List.of("ls", "cd [directory]", "mkdir [name]", "rm [name]",
             "mv [source] [destination]", "cp [source] [destination]", "help", "find [filename]", "where", "exit");
     private static final Logger logger = LogManager.getLogger(FileManager.class.getName());
-    private static final String rootPath = System.getProperty("user.dir") + "\\rootDir";
     private File currentDir;
     private final String username;
     private final String userPath;
@@ -21,9 +20,9 @@ public class FileManager {
 
     public FileManager(String username, ClientHandler clientHandler) {
         this.username = username;
-        userPath = rootPath + "\\" + username;
-        currentPath = userPath;
         cl = clientHandler;
+        userPath = cl.getRootDir().getName() + "\\" + username;
+        currentPath = userPath;
         createDirectory("");
     }
 
